@@ -3,13 +3,28 @@ import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
 import { Dropzone } from "@mantine/dropzone";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
-import { type DropzoneUIProps } from "./DropzoneSection";
 import { FileView } from "./FileView";
-import { useState } from "react";
 import { Button } from "@mantine/core";
+import { useRef } from "react";
+import { type ReactNode } from "react";
+
+export type OnChangeHandler = (value: File | File[] | null) => void;
+export type Value = File | null | File[] | string | string[]; // string is url
+export type Error = ReactNode | null | undefined;
+
+export interface DropzoneUIProps {
+  label: string;
+  withAsterik: boolean;
+  mimeType: string;
+  disabled: boolean;
+  onChange: OnChangeHandler;
+  value: Value;
+  error: Error;
+  multiple: boolean;
+}
 
 export function DropzoneUI(object: DropzoneUIProps) {
-  const [height, setHeigth] = useState(220);
+  const count = useRef(0);
 
   return (
     <div className="flex flex-col justify-start items-start gap-2 w-full">
@@ -18,29 +33,31 @@ export function DropzoneUI(object: DropzoneUIProps) {
         {object.withAsterik === true ? <p>*</p> : null}
       </div>
       <Dropzone
-        activateOnDrag={object.disabled}
-        activateOnClick={object.disabled}
+        activateOnDrag={!object.disabled}
+        activateOnClick={!object.disabled}
         onReject={(files) => console.log("rejected files", files)}
         maxSize={5 * 1024 ** 2}
+        mih={110}
         accept={[object.mimeType]}
         onDrop={(files: File[]) => {
-          files.map((file) => {
-            object.onChangeHandle(file);
-            setHeigth(100);
-            console.log(object.value);
-          });
+          if (object.multiple === true) {
+            object.onChange(files);
+          } else {
+            if (files.length !== 1) {
+              console.log("error: only 1 item allowed");
+            } else {
+              object.onChange(files);
+            }
+          }
         }}
-        style={{ width: "100%", transition: "transform 0.3s ease-in-out" }}
+        style={{ width: "100%" }}
       >
         <Group
           justify="center"
           gap="xl"
           style={{
             pointerEvents: "auto", // allow scrolling
-
-            height: height, // fixed height
             transition: "height 0.3s ease",
-            overflow: "auto", // vertical scroll
             width: "100%",
           }}
         >
@@ -49,14 +66,25 @@ export function DropzoneUI(object: DropzoneUIProps) {
           </Dropzone.Reject>
 
           {object.value !== null ? (
-            <div className="flex flex-col justify-start items-start h-full w-full overflow-auto ">
-              {object.value instanceof File ? (
-                <FileView file={object.value} />
+            <div>
+              {Array.isArray(object.value) ? (
+                <div>
+                  {object.value.map((singleFile) => {
+                     console.log(object.value);
+                    return <div className="flex flex-row gap-2"><FileView file={singleFile} /> <button
+                    onClick={()=>
+                    {
+                      
+                    }
+                    }
+                    >x</button></div>;
+
+                    
+                  })}
+                </div>
               ) : (
                 <div>
-                  {object.value.map((file) => {
-                    return <FileView file={file} />;
-                  })}
+                   <FileView file={object.value} />
                 </div>
               )}
             </div>
@@ -76,12 +104,8 @@ export function DropzoneUI(object: DropzoneUIProps) {
                   stroke={1.5}
                 />
               </Dropzone.Idle>
-              <Text size="xl" inline>
-                Drag images here or click to select files
-              </Text>
               <Text size="sm" c="dimmed" inline mt={7}>
-                Attach as many files as you like, each file should not exceed
-                5mb
+                Оруулахыг хүссэн файлаа чирж авчрах боломжтой.
               </Text>
             </div>
           )}
@@ -90,17 +114,17 @@ export function DropzoneUI(object: DropzoneUIProps) {
       {object.value === null ? null : (
         <div className="flex w-full flex-row justify-end ">
           <Button
-          onClick={() => {
-            object.onChangeHandle(null);
-            setHeigth(220);
-          }}
-          className="width-"
-        >
-          {" "}
-          Цуцлах
-        </Button>
+            onClick={() => {
+              object.onChange(null);
+              count.current = 0;
+            }}
+          >
+            {" "}
+            Цуцлах
+          </Button>
         </div>
       )}
+      <p>{object.error}</p>
     </div>
   );
 }
