@@ -5,10 +5,10 @@ import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
 import { FileView } from "./FileView";
 import { Button } from "@mantine/core";
-import { useRef } from "react";
 import { type ReactNode } from "react";
+import { isFile, isString, isFileArray, isStringArray } from "./App";
 
-export type OnChangeHandler = (value: File | File[] | null) => void;
+export type OnChangeHandler = (value: Value) => void;
 export type Value = File | null | File[] | string | string[]; // string is url
 export type Error = ReactNode | null | undefined;
 
@@ -24,7 +24,6 @@ export interface DropzoneUIProps {
 }
 
 export function DropzoneUI(object: DropzoneUIProps) {
-  const count = useRef(0);
 
   return (
     <div className="flex flex-col justify-start items-start gap-2 w-full">
@@ -41,19 +40,27 @@ export function DropzoneUI(object: DropzoneUIProps) {
         accept={[object.mimeType]}
         onDrop={(files: File[]) => {
           if (object.multiple === true) {
-            object.onChange(files);
-          } else {
-            if (files.length !== 1) {
-              console.log("error: only 1 item allowed");
+            if (isFileArray(object.value)) {
+              const next = [...object.value];
+              files.forEach((fileA) => {
+                if (!next.some((fileB) => fileB.name === fileA.name))
+                  next.push(fileA);
+              });
+              object.onChange(next);
+              return;
             } else {
               object.onChange(files);
+            }
+          } else {
+            if (files.length === 1) {
+              object.onChange(files[0]);
+              return;
             }
           }
         }}
         style={{ width: "100%" }}
       >
         <Group
-          justify="center"
           gap="xl"
           style={{
             pointerEvents: "auto", // allow scrolling
@@ -66,25 +73,42 @@ export function DropzoneUI(object: DropzoneUIProps) {
           </Dropzone.Reject>
 
           {object.value !== null ? (
-            <div>
-              {Array.isArray(object.value) ? (
-                <div>
+            <div className="w-full">
+              {isFileArray(object.value) ? (
+                <div className="w-full">
                   {object.value.map((singleFile) => {
-                     console.log(object.value);
-                    return <div className="flex flex-row gap-2"><FileView file={singleFile} /> <button
-                    onClick={()=>
-                    {
-                      
-                    }
-                    }
-                    >x</button></div>;
-
-                    
+                    console.log(object.value);
+                    return (
+                      <div className="flex flex-row gap-2 justify-between w-full items-center hover:bg-blue-300">
+                        <FileView file={singleFile} />
+                        <Button  size="compact-xs" variant="outline" color="red"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (isFileArray(object.value)) {
+                              const next = object.value.filter((f) => f.name !== singleFile.name);
+                              object.onChange(next);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    );
                   })}
                 </div>
               ) : (
                 <div>
-                   <FileView file={object.value} />
+                  {isFile(object.value) ? (
+                    <div className="flex flex-row gap-2">
+                      <FileView file={object.value} />
+                      <Button size="compact-xs" variant="outline" color="red" onClick={(e) =>{
+                          e.preventDefault();
+                          e.stopPropagation();
+                          object.onChange(null)
+                      }}>Delete</Button>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -111,19 +135,6 @@ export function DropzoneUI(object: DropzoneUIProps) {
           )}
         </Group>
       </Dropzone>
-      {object.value === null ? null : (
-        <div className="flex w-full flex-row justify-end ">
-          <Button
-            onClick={() => {
-              object.onChange(null);
-              count.current = 0;
-            }}
-          >
-            {" "}
-            Цуцлах
-          </Button>
-        </div>
-      )}
       <p>{object.error}</p>
     </div>
   );

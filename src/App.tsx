@@ -2,9 +2,19 @@ import { useState } from "react";
 import { type Value } from "./DropzoneUI";
 import { DropzoneUI } from "./DropzoneUI";
 
+export const isFile = (v: Value) => v instanceof File;
+
+export const isString = (v: Value) => typeof v === "string";
+
+export const isFileArray = (v: Value) =>
+  Array.isArray(v) && v.every((x) => x instanceof File);
+
+export const isStringArray = (v: Value): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
 export function App() {
   const [fileVariable, setFile] = useState<Value>(null);
-  const [error, setError] = useState("error");
+  const [error, setError] = useState("");
 
   return (
     <div className="flex justify-center items-center h-screen w-full">
@@ -17,55 +27,43 @@ export function App() {
           error={error}
           multiple={true}
           value={fileVariable}
-          onChange={(newFile: File | File[] | null) => {
-            if (newFile === null) {
-              setFile(null);
+          onChange={(newFile: Value) => {
+            if (isFile(newFile)) {
+              if (isFileArray(fileVariable)) {
+                setFile([...fileVariable, newFile]);
+                return;
+              } else if (
+                isStringArray(fileVariable) ||
+                isString(fileVariable)
+              ) {
+                setError("URL эсвэл Файл оруулахын аль нэгийг сонгоно уу");
+                return;
+              } else if (isFile(fileVariable)) {
+                setFile(newFile);
+                return;
+              }
+              setFile(newFile);
               return;
             }
-
-            if (newFile instanceof File) {
-              if (Array.isArray(fileVariable)) {
-                if (fileVariable.every((f) => f instanceof File)) {
-                  const item = fileVariable.find(
-                    (file) => file.name === newFile.name,
-                  );
-                  if (item) {
-                    setError(`the item already exists ${newFile.name}`);
-                    return;
-                  } else {
-                    setFile([...fileVariable, newFile]);
-                  }
-                }
-              } else if (fileVariable === null) {
+            if (isString(newFile)) {
+              if (isStringArray(fileVariable)) {
+                setFile([...fileVariable, newFile]);
+                return;
+              } else if (isFile(fileVariable) || isFileArray(fileVariable)) {
+                setError("URL эсвэл Файл оруулахын аль нэгийг сонгоно уу");
+                return;
+              } else if (isString(fileVariable)) {
                 setFile(newFile);
-              } else if (fileVariable instanceof File) {
-                if (fileVariable.name !== newFile.name) {
-                  setFile([fileVariable, newFile]);
-                  return;
-                }
-                setError(`the item already exists ${newFile.name}`);
+                return;
               }
+              setFile(newFile);
+              return;
             }
-            if (Array.isArray(newFile) && newFile[0] instanceof File) {
-              if (
-                Array.isArray(fileVariable) &&
-                fileVariable.every((f) => f instanceof File)
-              ) {
-                const existingFiles = fileVariable as File[]; // Now TypeScript knows it's File[]
-
-                const hasDuplicate = newFile.some((fileA) =>
-                  existingFiles.some((fileB) => fileB.name === fileA.name),
-                );
-
-                if (hasDuplicate) {
-                  setError("Davhardsn file bn");
-                } else {
-                  setFile([...existingFiles, ...newFile]);
-                }
-              } else {
+            if (isFileArray(newFile)) {
                 setFile(newFile);
-              }
-            }
+                return;
+               
+            } else {setFile(null)}
           }}
         ></DropzoneUI>
       </div>
