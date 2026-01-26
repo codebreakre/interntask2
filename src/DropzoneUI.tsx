@@ -1,4 +1,4 @@
-import { Divider, Group, Text } from "@mantine/core";
+import { Group, Text } from "@mantine/core";
 import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
 import { Dropzone } from "@mantine/dropzone";
 import "@mantine/core/styles.css";
@@ -6,7 +6,7 @@ import "@mantine/dropzone/styles.css";
 import { FileView } from "./FileView";
 import { Button } from "@mantine/core";
 import { type ReactNode } from "react";
-import { isFile, isString } from "./App";
+import { isFile } from "./App";
 import { ImageView } from "./Image";
 
 export type OnChangeHandler = (value: Value) => void;
@@ -154,21 +154,13 @@ export function DropzoneUI(object: DropzoneUIProps) {
                   {isFile(object.value) ? (
                     <div>
                       <FileView file={object.value} />
-                      <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          object.onChange(null);
-                        }}
-                      >
-                        delete
-                      </Button>
                     </div>
                   ) : (
                     <div>
                       <ImageView value={object.value} />
-
-                      <Button
+                    </div>
+                  )}
+                  <Button
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -177,8 +169,6 @@ export function DropzoneUI(object: DropzoneUIProps) {
                       >
                         delete
                       </Button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
