@@ -6,21 +6,15 @@ export const isFile = (v: Value) => v instanceof File;
 
 export const isString = (v: Value) => typeof v === "string";
 
-export const isFileArray = (v: Value) =>
-  Array.isArray(v) && v.every((x) => x instanceof File);
-
-export const isStringArray = (v: Value): v is string[] =>
-  Array.isArray(v) && v.every((x) => typeof x === "string");
-
 export function App() {
-  const [fileVariable, setFile] = useState<Value>(null);
+  const [fileVariable, setFile] = useState<Value>("https://images.unsplash.com/photo-1575936123452-b67c3203c357?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aW1hZ2V8ZW58MHx8MHx8fDA%3D");
   const [error, setError] = useState("");
 
   return (
     <div className="flex justify-center items-center h-screen w-full">
       <div className="flex justify-center items-start h-screen w-2/3">
         <DropzoneUI
-          label={"Файл"}
+          label={"Файл"}  
           withAsterik={true}
           mimeType={"image/png"}
           disabled={false}
@@ -28,43 +22,19 @@ export function App() {
           multiple={true}
           value={fileVariable}
           onChange={(newFile: Value) => {
-            if (isFile(newFile)) {
-              if (isFileArray(fileVariable)) {
-                setFile([...fileVariable, newFile]);
-                return;
-              } else if (
-                isStringArray(fileVariable) ||
-                isString(fileVariable)
-              ) {
-                setError("URL эсвэл Файл оруулахын аль нэгийг сонгоно уу");
-                return;
-              } else if (isFile(fileVariable)) {
-                setFile(newFile);
-                return;
-              }
-              setFile(newFile);
-              return;
-            }
-            if (isString(newFile)) {
-              if (isStringArray(fileVariable)) {
-                setFile([...fileVariable, newFile]);
-                return;
-              } else if (isFile(fileVariable) || isFileArray(fileVariable)) {
-                setError("URL эсвэл Файл оруулахын аль нэгийг сонгоно уу");
-                return;
-              } else if (isString(fileVariable)) {
-                setFile(newFile);
-                return;
-              }
-              setFile(newFile);
-              return;
-            }
-            if (isFileArray(newFile)) {
-                setFile(newFile);
-                return;
-               
-            } else {setFile(null)}
-          }}
+                  if(Array.isArray(newFile)) {
+                    if(newFile.length === 0) {
+                      setFile(null);
+                    }
+                    setFile(newFile);
+                  } else {
+                    setFile(newFile);
+                  }
+
+                console.log(fileVariable);
+          }
+        }
+            
         ></DropzoneUI>
       </div>
     </div>

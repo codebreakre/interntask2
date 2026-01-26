@@ -1,4 +1,4 @@
-import { Group, Text } from "@mantine/core";
+import { Divider, Group, Text } from "@mantine/core";
 import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
 import { Dropzone } from "@mantine/dropzone";
 import "@mantine/core/styles.css";
@@ -6,10 +6,11 @@ import "@mantine/dropzone/styles.css";
 import { FileView } from "./FileView";
 import { Button } from "@mantine/core";
 import { type ReactNode } from "react";
-import { isFile, isString, isFileArray, isStringArray } from "./App";
+import { isFile, isString } from "./App";
+import { ImageView } from "./Image";
 
 export type OnChangeHandler = (value: Value) => void;
-export type Value = File | null | File[] | string | string[]; // string is url
+export type Value = null | File | string | (File | string)[];
 export type Error = ReactNode | null | undefined;
 
 export interface DropzoneUIProps {
@@ -24,7 +25,6 @@ export interface DropzoneUIProps {
 }
 
 export function DropzoneUI(object: DropzoneUIProps) {
-
   return (
     <div className="flex flex-col justify-start items-start gap-2 w-full">
       <div className="flex flex-row">
@@ -39,22 +39,41 @@ export function DropzoneUI(object: DropzoneUIProps) {
         mih={110}
         accept={[object.mimeType]}
         onDrop={(files: File[]) => {
-          if (object.multiple === true) {
-            if (isFileArray(object.value)) {
-              const next = [...object.value];
-              files.forEach((fileA) => {
-                if (!next.some((fileB) => fileB.name === fileA.name))
-                  next.push(fileA);
-              });
-              object.onChange(next);
-              return;
-            } else {
-              object.onChange(files);
-            }
-          } else {
+          if (object.multiple === false) {
             if (files.length === 1) {
               object.onChange(files[0]);
-              return;
+            }
+            // multiple ni true uyd ajillana
+          } else {
+            if (object.value === null) {
+              object.onChange([...files]);
+            } else if (typeof object.value === "string") {
+              object.onChange([object.value, ...files]);
+            } else if (object.value instanceof File) {
+              const item = files.find((f) => {
+                if (object.value instanceof File) {
+                  f.name === object.value.name;
+                }
+              });
+              if (item) {
+                object.onChange([...files]);
+              } else {
+                object.onChange([object.value, ...files]);
+              }
+            } else if (Array.isArray(object.value)) {
+              const next = [...object.value];
+              files.map((item) => {
+                let isMatch = false;
+                if (Array.isArray(object.value)) {
+                  object.value.map((itemm) => {
+                    if (itemm instanceof File && item.name === itemm.name) {
+                      isMatch = true;
+                    }
+                  });
+                }
+                if (!isMatch) next.push(item);
+              });
+              object.onChange([...next]);
             }
           }
         }}
@@ -73,26 +92,59 @@ export function DropzoneUI(object: DropzoneUIProps) {
           </Dropzone.Reject>
 
           {object.value !== null ? (
-            <div className="w-full">
-              {isFileArray(object.value) ? (
-                <div className="w-full">
-                  {object.value.map((singleFile) => {
-                    console.log(object.value);
+            <div>
+              {Array.isArray(object.value) ? (
+                <div>
+                  {object.value.map((item) => {
                     return (
-                      <div className="flex flex-row gap-2 justify-between w-full items-center hover:bg-blue-300">
-                        <FileView file={singleFile} />
-                        <Button  size="compact-xs" variant="outline" color="red"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (isFileArray(object.value)) {
-                              const next = object.value.filter((f) => f.name !== singleFile.name);
-                              object.onChange(next);
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
+                      <div>
+                        {isFile(item) ? (
+                          <div>
+                            <FileView file={item} />
+                            <Button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (Array.isArray(object.value)) {
+                                  const next = object.value.filter((file) => {
+                                    if (
+                                      file instanceof File &&
+                                      item instanceof File
+                                    ) {
+                                      return file.name !== item.name;
+                                    }
+                                    return file !== item;
+                                  });
+                                  object.onChange(
+                                    next.length > 0 ? next : null,
+                                  );
+                                }
+                              }}
+                            >
+                              delete
+                            </Button>
+                          </div>
+                        ) : (
+                          <div>
+                            <ImageView value={item} />
+                            <Button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (Array.isArray(object.value)) {
+                                  const next = object.value.filter((file) => {
+                                    return file !== item;
+                                  });
+                                  object.onChange(
+                                    next.length > 0 ? next : null,
+                                  );
+                                }
+                              }}
+                            >
+                              delete
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -100,15 +152,33 @@ export function DropzoneUI(object: DropzoneUIProps) {
               ) : (
                 <div>
                   {isFile(object.value) ? (
-                    <div className="flex flex-row gap-2">
+                    <div>
                       <FileView file={object.value} />
-                      <Button size="compact-xs" variant="outline" color="red" onClick={(e) =>{
+                      <Button
+                        onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          object.onChange(null)
-                      }}>Delete</Button>
+                          object.onChange(null);
+                        }}
+                      >
+                        delete
+                      </Button>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div>
+                      <ImageView value={object.value} />
+
+                      <Button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          object.onChange(null);
+                        }}
+                      >
+                        delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -129,7 +199,7 @@ export function DropzoneUI(object: DropzoneUIProps) {
                 />
               </Dropzone.Idle>
               <Text size="sm" c="dimmed" inline mt={7}>
-                Оруулахыг хүссэн файлаа чирж авчрах боломжтой.
+                {object.mimeType} төрлийн файлуудыг чирж оруулах боломжтой
               </Text>
             </div>
           )}

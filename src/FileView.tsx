@@ -1,7 +1,9 @@
-export const FileView = ({ file }: { file: File | string }) => {
+import { useState, useEffect } from "react";
+
+export const FileView = ({ file }: { file: File }) => {
   return (
     <>
-        {file instanceof File ? (
+        {!file.type.startsWith('image/') ? (
           <div className="flex flex-row justify-start gap-x-2 items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -16,8 +18,23 @@ export const FileView = ({ file }: { file: File | string }) => {
             <p>{file.name}</p>
           </div>
         ) : (
-          <div>s</div>
+          <ImageRenderer file={file}/>
         )}
    </>
   );
 };
+
+
+export const  ImageRenderer = ({ file }: {file:File}) => {
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  return imageUrl ? <img src={imageUrl} alt={file.name} /> : null;
+}
