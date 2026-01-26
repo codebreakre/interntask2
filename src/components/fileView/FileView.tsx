@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import styles from './fileView.module.css'
 
 export const FileView = ({ file }: { file: File }) => {
   return (
     <>
         {!file.type.startsWith('image/') ? (
-          <div className="flex flex-row justify-start gap-x-2 items-center ">
+          <div className={styles.container}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -36,5 +37,5 @@ export const  ImageRenderer = ({ file }: {file:File}) => {
     };
   }, [file]);
 
-  return imageUrl ? <img src={imageUrl} alt={file.name} /> : null;
+  return imageUrl ? <img src={imageUrl} className={styles.image} alt={file.name} /> : null;
 }

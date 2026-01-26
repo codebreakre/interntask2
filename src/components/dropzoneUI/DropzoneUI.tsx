@@ -3,16 +3,16 @@ import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
 import { Dropzone } from "@mantine/dropzone";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
-import { FileView } from "./FileView";
-import { Button } from "@mantine/core";
+import { FileView } from "../fileView/FileView";
 import { type ReactNode } from "react";
-import { isFile } from "../App";
-import { ImageView } from "./Image";
-import styles from "./dropzone.module.css"
+import { ImageView } from "../image/Image";
+import styles from "./dropzone.module.css";
 
 export type OnChangeHandler = (value: Value) => void;
 export type Value = null | File | string | (File | string)[];
 export type Error = ReactNode | null | undefined;
+
+export const isFile = (v: Value) => v instanceof File;
 
 export interface DropzoneUIProps {
   label: string;
@@ -82,23 +82,27 @@ export function DropzoneUI(object: DropzoneUIProps) {
       >
         <Group
           gap="xl"
-          style={{  width: "100%" }}
+          style={{
+            pointerEvents: "auto",
+            width: "100%",
+          }}
         >
           <Dropzone.Reject>
             <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
           </Dropzone.Reject>
 
           {object.value !== null ? (
-            <div className={styles.container}>
+            <div className={styles.div}>
               {Array.isArray(object.value) ? (
-                <div  className={styles.container}>
+                <div className={styles.itemContainer}>
                   {object.value.map((item) => {
                     return (
-                      <div  className={styles.container}>
+                      <div >
                         {isFile(item) ? (
-                          <div  className={styles.itemContainer}>
+                          <div className={styles.innerDiv}>
                             <FileView file={item} />
-                            <Button
+                            <button
+                              className={styles.button}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -117,14 +121,13 @@ export function DropzoneUI(object: DropzoneUIProps) {
                                   );
                                 }
                               }}
-                            >
-                              delete
-                            </Button>
+                            >x</button>
                           </div>
                         ) : (
-                          <div  className={styles.itemContainer}>
+                          <div className={styles.innerDiv}>
                             <ImageView value={item} />
-                            <Button
+                            <button
+                            className={styles.button}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -137,9 +140,7 @@ export function DropzoneUI(object: DropzoneUIProps) {
                                   );
                                 }
                               }}
-                            >
-                              delete
-                            </Button>
+                            >x</button>
                           </div>
                         )}
                       </div>
@@ -147,7 +148,7 @@ export function DropzoneUI(object: DropzoneUIProps) {
                   })}
                 </div>
               ) : (
-                <div className={styles.itemContainer}>
+                <div className={styles.innerDiv}>
                   {isFile(object.value) ? (
                     <div>
                       <FileView file={object.value} />
@@ -157,15 +158,14 @@ export function DropzoneUI(object: DropzoneUIProps) {
                       <ImageView value={object.value} />
                     </div>
                   )}
-                  <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          object.onChange(null);
-                        }}
-                      >
-                        delete
-                      </Button>
+                  <button
+                  className={styles.button}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      object.onChange(null);
+                    }}
+                  >x</button>
                 </div>
               )}
             </div>
