@@ -6,8 +6,9 @@ import "@mantine/dropzone/styles.css";
 import { FileView } from "./FileView";
 import { Button } from "@mantine/core";
 import { type ReactNode } from "react";
-import { isFile } from "./App";
+import { isFile } from "../App";
 import { ImageView } from "./Image";
+import styles from "./dropzone.module.css"
 
 export type OnChangeHandler = (value: Value) => void;
 export type Value = null | File | string | (File | string)[];
@@ -26,8 +27,8 @@ export interface DropzoneUIProps {
 
 export function DropzoneUI(object: DropzoneUIProps) {
   return (
-    <div className="flex flex-col justify-start items-start gap-2 w-full">
-      <div className="flex flex-row">
+    <div className={styles.outerContainer}>
+      <div className={styles.labelContainer}>
         <p>{object.label}</p>
         {object.withAsterik === true ? <p>*</p> : null}
       </div>
@@ -81,25 +82,21 @@ export function DropzoneUI(object: DropzoneUIProps) {
       >
         <Group
           gap="xl"
-          style={{
-            pointerEvents: "auto", // allow scrolling
-            transition: "height 0.3s ease",
-            width: "100%",
-          }}
+          style={{  width: "100%" }}
         >
           <Dropzone.Reject>
             <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
           </Dropzone.Reject>
 
           {object.value !== null ? (
-            <div>
+            <div className={styles.container}>
               {Array.isArray(object.value) ? (
-                <div>
+                <div  className={styles.container}>
                   {object.value.map((item) => {
                     return (
-                      <div>
+                      <div  className={styles.container}>
                         {isFile(item) ? (
-                          <div>
+                          <div  className={styles.itemContainer}>
                             <FileView file={item} />
                             <Button
                               onClick={(e) => {
@@ -125,7 +122,7 @@ export function DropzoneUI(object: DropzoneUIProps) {
                             </Button>
                           </div>
                         ) : (
-                          <div>
+                          <div  className={styles.itemContainer}>
                             <ImageView value={item} />
                             <Button
                               onClick={(e) => {
@@ -150,7 +147,7 @@ export function DropzoneUI(object: DropzoneUIProps) {
                   })}
                 </div>
               ) : (
-                <div>
+                <div className={styles.itemContainer}>
                   {isFile(object.value) ? (
                     <div>
                       <FileView file={object.value} />

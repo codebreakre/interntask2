@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { type Value } from "./DropzoneUI";
-import { DropzoneUI } from "./DropzoneUI";
+import { type Value } from "./components/DropzoneUI";
+import { DropzoneUI } from "./components/DropzoneUI";
 
 export const isFile = (v: Value) => v instanceof File;
 

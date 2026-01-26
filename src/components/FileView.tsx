@@ -4,7 +4,7 @@ export const FileView = ({ file }: { file: File }) => {
   return (
     <>
         {!file.type.startsWith('image/') ? (
-          <div className="flex flex-row justify-start gap-x-2 items-center">
+          <div className="flex flex-row justify-start gap-x-2 items-center ">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
