@@ -16,24 +16,11 @@ export function App() {
           withAsterik={true}
           mimeType={"image/png"}
           disabled={false}
-          error={error}
+          error={""}
           multiple={true}
           value={fileVariable}
-          onChange={(newFile: Value) => {
-                  if(Array.isArray(newFile)) {
-                    if(newFile.length === 0) {
-                      setFile(null);
-                    }
-                    setFile(newFile);
-                  } else {
-                    setFile(newFile);
-                  }
-
-                console.log(fileVariable);
-          }
-        }
-            
-        ></DropzoneUI>
+          onChange={setFile}
+        />
       </div>
     </div>
   );

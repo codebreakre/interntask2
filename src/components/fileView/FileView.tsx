@@ -1,10 +1,26 @@
-import { useState, useEffect } from "react";
-import styles from './fileView.module.css'
+import styles from "./fileView.module.css";
+import { ImageView } from "../image/Image";
 
-export const FileView = ({ file }: { file: File }) => {
+interface FileViewProps {
+  file: File;
+  onRemove: () => void;
+}
+
+export const FileView = ({ file, onRemove }: FileViewProps) => {
+
+  const isImageFile = file.type.startsWith("image/");
+
+  if (isImageFile) {
+    return (
+      <div className={styles.outerContainer}>
+        <ImageView value={file} onRemove={onRemove}/>       
+      </div>
+    )
+  }
+
   return (
-    <>
-        {!file.type.startsWith('image/') ? (
+    <div className={styles.outerContainer}>
+        <div className={styles.itemContainer}>
           <div className={styles.container}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -18,24 +34,26 @@ export const FileView = ({ file }: { file: File }) => {
             </svg>
             <p>{file.name}</p>
           </div>
-        ) : (
-          <ImageRenderer file={file}/>
-        )}
-   </>
+          <button
+            className={styles.button}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove();
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+            >
+              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+            </svg>
+          </button>
+        </div>
+    </div>
   );
 };
 
-
-export const  ImageRenderer = ({ file }: {file:File}) => {
-  const [imageUrl, setImageUrl] = useState<string>("");
-
-  useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [file]);
-
-  return imageUrl ? <img src={imageUrl} className={styles.image} alt={file.name} /> : null;
-}

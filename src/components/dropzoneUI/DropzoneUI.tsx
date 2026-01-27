@@ -15,184 +15,168 @@ export type Error = ReactNode | null | undefined;
 export const isFile = (v: Value) => v instanceof File;
 
 export interface DropzoneUIProps {
-  label: string;
-  withAsterik: boolean;
+  label?: string;
+  withAsterik?: boolean;
   mimeType: string;
-  disabled: boolean;
+  disabled?: boolean;
   onChange: OnChangeHandler;
   value: Value;
-  error: Error;
-  multiple: boolean;
+  error?: Error;
+  multiple?: boolean;
+  maxSize?: number;
 }
 
-export function DropzoneUI(object: DropzoneUIProps) {
-  return (
-    <div className={styles.outerContainer}>
-      <div className={styles.labelContainer}>
-        <p>{object.label}</p>
-        {object.withAsterik === true ? <p>*</p> : null}
-      </div>
-      <Dropzone
-        activateOnDrag={!object.disabled}
-        activateOnClick={!object.disabled}
-        onReject={(files) => console.log("rejected files", files)}
-        maxSize={5 * 1024 ** 2}
-        mih={110}
-        accept={[object.mimeType]}
-        onDrop={(files: File[]) => {
-          if (object.multiple === false) {
-            if (files.length === 1) {
-              object.onChange(files[0]);
-            }
-            // multiple ni true uyd ajillana
-          } else {
-            if (object.value === null) {
-              object.onChange([...files]);
-            } else if (typeof object.value === "string") {
-              object.onChange([object.value, ...files]);
-            } else if (object.value instanceof File) {
-              const item = files.find((f) => {
-                if (object.value instanceof File) {
-                  f.name === object.value.name;
-                }
-              });
-              if (item) {
-                object.onChange([...files]);
-              } else {
-                object.onChange([object.value, ...files]);
-              }
-            } else if (Array.isArray(object.value)) {
-              const next = [...object.value];
-              files.map((item) => {
-                let isMatch = false;
-                if (Array.isArray(object.value)) {
-                  object.value.map((itemm) => {
-                    if (itemm instanceof File && item.name === itemm.name) {
-                      isMatch = true;
-                    }
-                  });
-                }
-                if (!isMatch) next.push(item);
-              });
-              object.onChange([...next]);
-            }
-          }
-        }}
-        style={{ width: "100%" }}
-      >
-        <Group
-          gap="xl"
-          style={{
-            pointerEvents: "auto",
-            width: "100%",
-          }}
-        >
-          <Dropzone.Reject>
-            <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
-          </Dropzone.Reject>
+const DEFAULT_FILE_MAX_SIZE = 5 * 1024 ** 2; // 5MB
 
-          {object.value !== null ? (
-            <div className={styles.div}>
-              {Array.isArray(object.value) ? (
-                <div className={styles.itemContainer}>
-                  {object.value.map((item) => {
-                    return (
-                      <div >
-                        {isFile(item) ? (
-                          <div className={styles.innerDiv}>
-                            <FileView file={item} />
-                            <button
-                              className={styles.button}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (Array.isArray(object.value)) {
-                                  const next = object.value.filter((file) => {
-                                    if (
-                                      file instanceof File &&
-                                      item instanceof File
-                                    ) {
-                                      return file.name !== item.name;
-                                    }
-                                    return file !== item;
-                                  });
-                                  object.onChange(
-                                    next.length > 0 ? next : null,
-                                  );
-                                }
-                              }}
-                            >x</button>
-                          </div>
-                        ) : (
-                          <div className={styles.innerDiv}>
-                            <ImageView value={item} />
-                            <button
-                            className={styles.button}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (Array.isArray(object.value)) {
-                                  const next = object.value.filter((file) => {
-                                    return file !== item;
-                                  });
-                                  object.onChange(
-                                    next.length > 0 ? next : null,
-                                  );
-                                }
-                              }}
-                            >x</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className={styles.innerDiv}>
-                  {isFile(object.value) ? (
-                    <div>
-                      <FileView file={object.value} />
-                    </div>
-                  ) : (
-                    <div>
-                      <ImageView value={object.value} />
-                    </div>
-                  )}
-                  <button
-                  className={styles.button}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      object.onChange(null);
-                    }}
-                  >x</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <Dropzone.Accept>
-                <IconUpload
-                  size={52}
-                  color="var(--mantine-color-blue-6)"
-                  stroke={1.5}
-                />
-              </Dropzone.Accept>
-              <Dropzone.Idle>
-                <IconPhoto
-                  size={52}
-                  color="var(--mantine-color-dimmed)"
-                  stroke={1.5}
-                />
-              </Dropzone.Idle>
-              <Text size="sm" c="dimmed" inline mt={7}>
-                {object.mimeType} төрлийн файлуудыг чирж оруулах боломжтой
-              </Text>
-            </div>
-          )}
-        </Group>
-      </Dropzone>
-      <p>{object.error}</p>
-    </div>
-  );
+const dropDuplicateFiles = (
+  array1: (string | File)[],
+  array2: (string | File)[],
+): (string | File)[] => {
+  const next = [...array1];
+  array2.forEach((item) => {
+    let isMatch = false;
+    array1.forEach((itemm) => {
+      if (
+        (itemm instanceof File &&
+          item instanceof File &&
+          item.name === itemm.name) ||
+        item === itemm
+      ) {
+        isMatch = true;
+        return;
+      }
+    });
+    if (!isMatch) next.push(item);
+  });
+  return [...next];
+};
+
+export function DropzoneUI({
+  label,
+  withAsterik,
+  mimeType,
+  disabled,
+  onChange,
+  value,
+  error,
+  multiple = false,
+  maxSize = DEFAULT_FILE_MAX_SIZE,
+}: DropzoneUIProps) {
+  {
+    const handleDrop = (files: File[]) => {
+      if (!multiple) {
+        if (files.length === 1) {
+          onChange(files[0]);
+        }
+        return;
+      }
+
+      if (!Array.isArray(value)) {
+        onChange([...files]);
+        return;
+      }
+
+      onChange(dropDuplicateFiles([...value], [...files]));
+    };
+
+    const removeFile = (index?: number) => {
+      if (Array.isArray(value)) {
+        const next = value.filter((_, valueIndex) => valueIndex !== index);
+        onChange(next);
+      } else {
+        onChange(null);
+      }
+    };
+
+    return (
+      <div className={styles.outerContainer}>
+        <div className={styles.labelContainer}>
+          <p className={error ? styles.error : styles.noError}>{label}</p>
+          {withAsterik === true ? (
+            <p className={error ? styles.error : styles.noError}>*</p>
+          ) : null}
+        </div>
+        <Dropzone
+          activateOnDrag={!disabled}
+          activateOnClick={!disabled}
+          maxSize={maxSize}
+          mih={110}
+          accept={[mimeType]}
+          onDrop={handleDrop}
+          style={{ width: "100%" }}
+        >
+          <Group
+            gap="xl"
+            style={{
+              pointerEvents: "auto",
+              width: "100%",
+            }}
+          >
+            <Dropzone.Reject>
+              <IconX
+                size={52}
+                color="var(--mantine-color-red-6)"
+                stroke={1.5}
+              />
+            </Dropzone.Reject>
+
+            {value !== null ? (
+              <>
+                {Array.isArray(value) ? (
+                  <div className={styles.itemContainer}>
+                    {value.map((item, index) => {
+                      return (
+                        <div className={styles.innerDiv}>
+                          {isFile(item) ? (
+                            <FileView
+                              file={item}
+                              onRemove={() => removeFile(index)}
+                            />
+                          ) : (
+                            <ImageView
+                              value={item}
+                              onRemove={() => removeFile(index)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div>
+                    {isFile(value) ? (
+                      <FileView file={value} onRemove={() => removeFile()} />
+                    ) : (
+                      <ImageView value={value} onRemove={() => removeFile()} />
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Dropzone.Accept>
+                  <IconUpload
+                    size={52}
+                    color="var(--mantine-color-blue-6)"
+                    stroke={1.5}
+                  />
+                </Dropzone.Accept>
+                <Dropzone.Idle>
+                  <IconPhoto
+                    size={52}
+                    color="var(--mantine-color-dimmed)"
+                    stroke={1.5}
+                  />
+                </Dropzone.Idle>
+                <Text size="sm" c="dimmed" inline mt={7}>
+                  {mimeType} төрлийн файлуудыг чирж оруулах боломжтой
+                </Text>
+              </>
+            )}
+          </Group>
+        </Dropzone>
+        <span className={styles.error}>{error}</span>
+      </div>
+    );
+  }
 }
