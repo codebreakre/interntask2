@@ -7,6 +7,7 @@ import { FileView } from "../fileView/FileView";
 import { type ReactNode } from "react";
 import { ImageView } from "../image/Image";
 import styles from "./dropzone.module.css";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 
 export type OnChangeHandler = (value: Value) => void;
 export type Value = null | File | string | (File | string)[];
@@ -27,35 +28,49 @@ export interface DropzoneUIProps {
 }
 
 const DEFAULT_FILE_MAX_SIZE = 5 * 1024 ** 2; // 5MB
+const PLACEHOLDER_ON_DISABLED_TRUE = "Зураг чирж оруулах боломжгүй";
+const PLACEHOLDER_ON_DISABLED_FALSE = "төрлийн файлыг чирж оруулах боломжтой";
 
 const dropDuplicateFiles = (
-  array1: (string | File)[],
-  array2: (string | File)[],
+  originalArray: (string | File)[],
+  mergingArray: (string | File)[],
 ): (string | File)[] => {
-  const next = [...array1];
-  array2.forEach((item) => {
-    let isMatch = false;
-    array1.forEach((itemm) => {
+  const returningArray = [...originalArray];
+  mergingArray.forEach((mergeItem) => {
+    let isDuplicate = false;
+    originalArray.forEach((originalsItem) => {
       if (
-        (itemm instanceof File &&
-          item instanceof File &&
-          item.name === itemm.name) ||
-        item === itemm
+        (originalsItem instanceof File &&
+          mergeItem instanceof File &&
+          mergeItem.name === originalsItem.name) ||
+        mergeItem === originalsItem
       ) {
-        isMatch = true;
+        isDuplicate = true;
         return;
       }
     });
-    if (!isMatch) next.push(item);
+    if (!isDuplicate) returningArray.push(mergeItem);
   });
-  return [...next];
+  return [...returningArray];
+};
+
+const reorderArray = (
+  array: any,
+  draggedItemIndex: number,
+  insertingIndex: number,
+) => {
+  const newArray = [...array];
+  const item = newArray[draggedItemIndex];
+  newArray.splice(draggedItemIndex, 1);
+  newArray.splice(insertingIndex, 0, item);
+  return newArray;
 };
 
 export function DropzoneUI({
   label,
   withAsterik,
   mimeType,
-  disabled,
+  disabled = false,
   onChange,
   value,
   error,
@@ -63,6 +78,29 @@ export function DropzoneUI({
   maxSize = DEFAULT_FILE_MAX_SIZE,
 }: DropzoneUIProps) {
   {
+    const [parent] = useAutoAnimate();
+    const [child] = useAutoAnimate();
+
+    const dragstartHandler = (event: React.DragEvent<HTMLDivElement>) => {
+      event.dataTransfer.setData("draggedItem", event.currentTarget.id);
+    };
+    const dragoverHandler = (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    };
+    const dropHandler = (event: React.DragEvent<HTMLDivElement>) => {
+      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      const draggedItemIndex = parseInt(
+        event.dataTransfer.getData("draggedItem"),
+      );
+      const insertingIndex = parseInt(event.currentTarget.id);
+      onChange(reorderArray(value, draggedItemIndex, insertingIndex));
+    };
+
     const handleDrop = (files: File[]) => {
       if (!multiple) {
         if (files.length === 1) {
@@ -81,8 +119,10 @@ export function DropzoneUI({
 
     const removeFile = (index?: number) => {
       if (Array.isArray(value)) {
-        const next = value.filter((_, valueIndex) => valueIndex !== index);
-        onChange(next);
+        const returningArray = value.filter(
+          (_, valueIndex) => valueIndex !== index,
+        );
+        onChange(returningArray);
       } else {
         onChange(null);
       }
@@ -92,7 +132,7 @@ export function DropzoneUI({
       <div className={styles.outerContainer}>
         <div className={styles.labelContainer}>
           <p className={error ? styles.error : styles.noError}>{label}</p>
-          {withAsterik === true ? (
+          {withAsterik === true && !disabled ? (
             <p className={error ? styles.error : styles.noError}>*</p>
           ) : null}
         </div>
@@ -103,7 +143,7 @@ export function DropzoneUI({
           mih={110}
           accept={[mimeType]}
           onDrop={handleDrop}
-          style={{ width: "100%" }}
+          className={styles.container}
         >
           <Group
             gap="xl"
@@ -119,14 +159,29 @@ export function DropzoneUI({
                 stroke={1.5}
               />
             </Dropzone.Reject>
+            <Dropzone.Accept>
+              <IconUpload
+                size={52}
+                color="var(--mantine-color-blue-6)"
+                stroke={1.5}
+              />
+            </Dropzone.Accept>
 
             {value !== null ? (
               <>
                 {Array.isArray(value) ? (
-                  <div className={styles.itemContainer}>
-                    {value.map((item, index) => {
-                      return (
-                        <div className={styles.innerDiv}>
+                  <div ref={parent} className={styles.itemContainer}>
+                    {value.length !== 0 ? (
+                      value.map((item, index) => (
+                        <div
+                          key={item instanceof File ? `file-${item.name}` : `image-${item}`}
+                          id={`${index}`}
+                          className={styles.innerDiv}
+                          draggable
+                          onDragStart={dragstartHandler}
+                          onDragOver={dragoverHandler}
+                          onDrop={dropHandler}
+                        >
                           {isFile(item) ? (
                             <FileView
                               file={item}
@@ -139,8 +194,10 @@ export function DropzoneUI({
                             />
                           )}
                         </div>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <PlaceHolder disabled={disabled} mimeType={mimeType} />
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -154,23 +211,7 @@ export function DropzoneUI({
               </>
             ) : (
               <>
-                <Dropzone.Accept>
-                  <IconUpload
-                    size={52}
-                    color="var(--mantine-color-blue-6)"
-                    stroke={1.5}
-                  />
-                </Dropzone.Accept>
-                <Dropzone.Idle>
-                  <IconPhoto
-                    size={52}
-                    color="var(--mantine-color-dimmed)"
-                    stroke={1.5}
-                  />
-                </Dropzone.Idle>
-                <Text size="sm" c="dimmed" inline mt={7}>
-                  {mimeType} төрлийн файлуудыг чирж оруулах боломжтой
-                </Text>
+                <PlaceHolder disabled={disabled} mimeType={mimeType} />
               </>
             )}
           </Group>
@@ -180,3 +221,31 @@ export function DropzoneUI({
     );
   }
 }
+
+const PlaceHolder = ({
+  disabled,
+  mimeType,
+}: {
+  disabled?: boolean;
+  mimeType?: string;
+}) => {
+  if (disabled) {
+    return (
+      <>
+        <Text size="sm" c="dimmed" inline mt={7}>
+          {PLACEHOLDER_ON_DISABLED_TRUE}
+        </Text>
+      </>
+    );
+  }
+  return (
+    <>
+      <Dropzone.Idle>
+        <IconPhoto size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
+      </Dropzone.Idle>
+      <Text size="sm" c="dimmed" inline mt={7}>
+        <em>{mimeType}</em> {PLACEHOLDER_ON_DISABLED_FALSE}
+      </Text>
+    </>
+  );
+};

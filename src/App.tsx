@@ -5,7 +5,7 @@ import { DropzoneUI } from "./components/dropzoneUI/DropzoneUI";
 
 
 export function App() {
-  const [fileVariable, setFile] = useState<Value>("https://images.unsplash.com/photo-1575936123452-b67c3203c357?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aW1hZ2V8ZW58MHx8MHx8fDA%3D");
+  const [fileVariable, setFile] = useState<Value>([]);
   const [error, setError] = useState("");
 
   return (

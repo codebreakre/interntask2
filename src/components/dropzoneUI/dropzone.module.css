@@ -25,10 +25,15 @@
     display: flex; 
     justify-content: start;
     align-items: start;
-    width: 20rem;
+
     width: 100%;
+    
 }
 
 .error {
     color: red;
+}
+.container {
+    min-height: 110px;
+    width: 100%;
 }
