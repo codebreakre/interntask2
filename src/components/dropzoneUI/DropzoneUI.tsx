@@ -8,6 +8,7 @@ import { type ReactNode } from "react";
 import { ImageView } from "../image/Image";
 import styles from "./dropzone.module.css";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useRef } from "react";
 
 export type OnChangeHandler = (value: Value) => void;
 export type Value = null | File | string | (File | string)[];
@@ -78,30 +79,40 @@ export function DropzoneUI({
   maxSize = DEFAULT_FILE_MAX_SIZE,
 }: DropzoneUIProps) {
   {
+    const reOrderingDrag = useRef(false);
     const [parent] = useAutoAnimate();
-    const [child] = useAutoAnimate();
 
+    // --------Renderlesen itemiin bairiig solih hesgiin code drop logic --------
     const dragstartHandler = (event: React.DragEvent<HTMLDivElement>) => {
+      reOrderingDrag.current = true;
       event.dataTransfer.setData("draggedItem", event.currentTarget.id);
     };
     const dragoverHandler = (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
+       event.preventDefault();
+  event.stopPropagation();
     };
     const dropHandler = (event: React.DragEvent<HTMLDivElement>) => {
-      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-        event.preventDefault();
-        return;
-      }
-
       event.preventDefault();
+      event.stopPropagation();
+      reOrderingDrag.current = false;
+     const isExternalFiles = event.dataTransfer.types?.includes("Files");
+if (isExternalFiles) return; // энэ бол гаднаас файл drop хийж байгаа
       const draggedItemIndex = parseInt(
         event.dataTransfer.getData("draggedItem"),
       );
       const insertingIndex = parseInt(event.currentTarget.id);
+      if (insertingIndex < 0) return;
       onChange(reorderArray(value, draggedItemIndex, insertingIndex));
     };
 
+    const dragendHandler = () => {
+  reOrderingDrag.current = false;
+};
+    // --------Renderlesen itemiin bairiig solih hesgiin code drop logic --------
+
+    //--------File gadnaas oruulj ireh uyiin drop logic -------------
     const handleDrop = (files: File[]) => {
+      if (reOrderingDrag.current === true) return;
       if (!multiple) {
         if (files.length === 1) {
           onChange(files[0]);
@@ -116,6 +127,7 @@ export function DropzoneUI({
 
       onChange(dropDuplicateFiles([...value], [...files]));
     };
+    //--------File gadnaas oruulj ireh uyiin drop logic -------------
 
     const removeFile = (index?: number) => {
       if (Array.isArray(value)) {
@@ -174,13 +186,18 @@ export function DropzoneUI({
                     {value.length !== 0 ? (
                       value.map((item, index) => (
                         <div
-                          key={item instanceof File ? `file-${item.name}` : `image-${item}`}
+                          key={
+                            item instanceof File
+                              ? `file-${item.name}-${item.size}-${item.lastModified}`
+                              : `image-${item}-${index}`
+                          }
                           id={`${index}`}
                           className={styles.innerDiv}
                           draggable
                           onDragStart={dragstartHandler}
                           onDragOver={dragoverHandler}
                           onDrop={dropHandler}
+                          onDragEnd={dragendHandler}
                         >
                           {isFile(item) ? (
                             <FileView
