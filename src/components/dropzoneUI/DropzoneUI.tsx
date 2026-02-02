@@ -1,5 +1,5 @@
-import { Group, Text } from "@mantine/core";
-import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
+import { Group } from "@mantine/core";
+import { IconUpload, IconX } from "@tabler/icons-react";
 import { Dropzone } from "@mantine/dropzone";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
@@ -7,8 +7,25 @@ import { FileView } from "../fileView/FileView";
 import { type ReactNode } from "react";
 import { ImageView } from "../image/Image";
 import styles from "./dropzone.module.css";
+import { PlaceHolder } from "./Placeholder";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { useRef } from "react";
+
+
 
 export type OnChangeHandler = (value: Value) => void;
 export type Value = null | File | string | (File | string)[];
@@ -16,21 +33,8 @@ export type Error = ReactNode | null | undefined;
 
 export const isFile = (v: Value) => v instanceof File;
 
-export interface DropzoneUIProps {
-  label?: string;
-  withAsterik?: boolean;
-  mimeType: string;
-  disabled?: boolean;
-  onChange: OnChangeHandler;
-  value: Value;
-  error?: Error;
-  multiple?: boolean;
-  maxSize?: number;
-}
 
 const DEFAULT_FILE_MAX_SIZE = 5 * 1024 ** 2; // 5MB
-const PLACEHOLDER_ON_DISABLED_TRUE = "Зураг чирж оруулах боломжгүй";
-const PLACEHOLDER_ON_DISABLED_FALSE = "төрлийн файлыг чирж оруулах боломжтой";
 
 const dropDuplicateFiles = (
   originalArray: (string | File)[],
@@ -55,17 +59,59 @@ const dropDuplicateFiles = (
   return [...returningArray];
 };
 
-const reorderArray = (
-  array: any,
-  draggedItemIndex: number,
-  insertingIndex: number,
-) => {
-  const newArray = [...array];
-  const item = newArray[draggedItemIndex];
-  newArray.splice(draggedItemIndex, 1);
-  newArray.splice(insertingIndex, 0, item);
-  return newArray;
-};
+
+
+export interface DropzoneUIProps {
+  label?: string;
+  withAsterik?: boolean;
+  mimeType: string;
+  disabled?: boolean;
+  onChange: OnChangeHandler;
+  value: Value;
+  error?: Error;
+  multiple?: boolean;
+  maxSize?: number;
+}
+
+
+interface SortableItemProps {
+  id: string;
+  item: File | string;
+  onRemove: () => void;
+}
+
+function SortableItem({ id, item, onRemove }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={styles.innerDiv}
+    >
+      {isFile(item) ? (
+        <FileView file={item} onRemove={onRemove} />
+      ) : (
+        <ImageView value={item} onRemove={onRemove} />
+      )}
+    </div>
+  );
+}
 
 export function DropzoneUI({
   label,
@@ -78,191 +124,152 @@ export function DropzoneUI({
   multiple = false,
   maxSize = DEFAULT_FILE_MAX_SIZE,
 }: DropzoneUIProps) {
-  {
-    const reOrderingDrag = useRef(false);
-    const [parent] = useAutoAnimate();
 
-    // --------Renderlesen itemiin bairiig solih hesgiin code drop logic --------
-    const dragstartHandler = (event: React.DragEvent<HTMLDivElement>) => {
-      reOrderingDrag.current = true;
-      event.dataTransfer.setData("draggedItem", event.currentTarget.id);
-    };
-    const dragoverHandler = (event: React.DragEvent<HTMLDivElement>) => {
-       event.preventDefault();
-  event.stopPropagation();
-    };
-    const dropHandler = (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      reOrderingDrag.current = false;
-     const isExternalFiles = event.dataTransfer.types?.includes("Files");
-if (isExternalFiles) return; // энэ бол гаднаас файл drop хийж байгаа
-      const draggedItemIndex = parseInt(
-        event.dataTransfer.getData("draggedItem"),
-      );
-      const insertingIndex = parseInt(event.currentTarget.id);
-      if (insertingIndex < 0) return;
-      onChange(reorderArray(value, draggedItemIndex, insertingIndex));
-    };
-
-    const dragendHandler = () => {
-  reOrderingDrag.current = false;
-};
-    // --------Renderlesen itemiin bairiig solih hesgiin code drop logic --------
-
-    //--------File gadnaas oruulj ireh uyiin drop logic -------------
-    const handleDrop = (files: File[]) => {
-      if (reOrderingDrag.current === true) return;
-      if (!multiple) {
-        if (files.length === 1) {
-          onChange(files[0]);
-        }
-        return;
-      }
-
-      if (!Array.isArray(value)) {
-        onChange([...files]);
-        return;
-      }
-
-      onChange(dropDuplicateFiles([...value], [...files]));
-    };
-    //--------File gadnaas oruulj ireh uyiin drop logic -------------
-
-    const removeFile = (index?: number) => {
-      if (Array.isArray(value)) {
-        const returningArray = value.filter(
-          (_, valueIndex) => valueIndex !== index,
-        );
-        onChange(returningArray);
-      } else {
-        onChange(null);
-      }
-    };
-
-    return (
-      <div className={styles.outerContainer}>
-        <div className={styles.labelContainer}>
-          <p className={error ? styles.error : styles.noError}>{label}</p>
-          {withAsterik === true && !disabled ? (
-            <p className={error ? styles.error : styles.noError}>*</p>
-          ) : null}
-        </div>
-        <Dropzone
-          activateOnDrag={!disabled}
-          activateOnClick={!disabled}
-          maxSize={maxSize}
-          mih={110}
-          accept={[mimeType]}
-          onDrop={handleDrop}
-          className={styles.container}
-        >
-          <Group
-            gap="xl"
-            style={{
-              pointerEvents: "auto",
-              width: "100%",
-            }}
-          >
-            <Dropzone.Reject>
-              <IconX
-                size={52}
-                color="var(--mantine-color-red-6)"
-                stroke={1.5}
-              />
-            </Dropzone.Reject>
-            <Dropzone.Accept>
-              <IconUpload
-                size={52}
-                color="var(--mantine-color-blue-6)"
-                stroke={1.5}
-              />
-            </Dropzone.Accept>
-
-            {value !== null ? (
-              <>
-                {Array.isArray(value) ? (
-                  <div ref={parent} className={styles.itemContainer}>
-                    {value.length !== 0 ? (
-                      value.map((item, index) => (
-                        <div
-                          key={
-                            item instanceof File
-                              ? `file-${item.name}-${item.size}-${item.lastModified}`
-                              : `image-${item}-${index}`
-                          }
-                          id={`${index}`}
-                          className={styles.innerDiv}
-                          draggable
-                          onDragStart={dragstartHandler}
-                          onDragOver={dragoverHandler}
-                          onDrop={dropHandler}
-                          onDragEnd={dragendHandler}
-                        >
-                          {isFile(item) ? (
-                            <FileView
-                              file={item}
-                              onRemove={() => removeFile(index)}
-                            />
-                          ) : (
-                            <ImageView
-                              value={item}
-                              onRemove={() => removeFile(index)}
-                            />
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <PlaceHolder disabled={disabled} mimeType={mimeType} />
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    {isFile(value) ? (
-                      <FileView file={value} onRemove={() => removeFile()} />
-                    ) : (
-                      <ImageView value={value} onRemove={() => removeFile()} />
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <PlaceHolder disabled={disabled} mimeType={mimeType} />
-              </>
-            )}
-          </Group>
-        </Dropzone>
-        <span className={styles.error}>{error}</span>
-      </div>
-    );
-  }
-}
-
-const PlaceHolder = ({
-  disabled,
-  mimeType,
-}: {
-  disabled?: boolean;
-  mimeType?: string;
-}) => {
-  if (disabled) {
-    return (
-      <>
-        <Text size="sm" c="dimmed" inline mt={7}>
-          {PLACEHOLDER_ON_DISABLED_TRUE}
-        </Text>
-      </>
-    );
-  }
-  return (
-    <>
-      <Dropzone.Idle>
-        <IconPhoto size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
-      </Dropzone.Idle>
-      <Text size="sm" c="dimmed" inline mt={7}>
-        <em>{mimeType}</em> {PLACEHOLDER_ON_DISABLED_FALSE}
-      </Text>
-    </>
+    const [parent] = useAutoAnimate<HTMLDivElement>();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, 
+      },
+    }),
   );
-};
+
+  const handleDrop = (files: File[]) => {
+    if (!multiple) {
+      if (files.length === 1) {
+        onChange(files[0]);
+      }
+      console.log("single file mode");
+      return;
+    }
+
+    if (!Array.isArray(value)) {
+      onChange([...files]);
+      console.log("multiple file mode");
+      return;
+    }
+
+    onChange(dropDuplicateFiles([...value], [...files]));
+    console.log("multiple file mode with existing files");
+  };
+
+  const removeFile = (index?: number) => {
+    if (Array.isArray(value)) {
+      const returningArray = value.filter(
+        (_, valueIndex) => valueIndex !== index
+      );
+      onChange(returningArray);
+    } else {
+      onChange(null);
+    }
+    console.log("file removed");
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || !Array.isArray(value)) return;
+
+    if (active.id !== over.id) {
+      const oldIndex = value.findIndex((_, i) => getItemId(value[i], i) === active.id);
+      const newIndex = value.findIndex((_, i) => getItemId(value[i], i) === over.id);
+
+      onChange(arrayMove(value, oldIndex, newIndex));
+    }
+  };
+
+  // Generate unique IDs for items
+  const getItemId = (item: File | string, index: number) => {
+    if (item instanceof File) {
+      return `file-${item.name}-${item.size}-${item.lastModified}`;
+    }
+    return `image-${item}-${index}`;
+  };
+
+  // Get array of IDs for SortableContext
+  const itemIds = Array.isArray(value)
+    ? value.map((item, index) => getItemId(item, index))
+    : [];
+
+  return (
+    <div className={styles.outerContainer}>
+      <div className={styles.labelContainer}>
+        <p className={error ? styles.error : styles.noError}>{label}</p>
+        {withAsterik === true && !disabled ? (
+          <p className={error ? styles.error : styles.noError}>*</p>
+        ) : null}
+      </div>
+      <Dropzone
+        activateOnDrag={!disabled}
+        activateOnClick={!disabled}
+        maxSize={maxSize}
+        mih={110}
+        accept={[mimeType]}
+        onDrop={handleDrop}
+        className={styles.container}
+      >
+        <Group gap="xl" className={styles.group} ref={parent}>
+          <Dropzone.Reject>
+            <IconX
+              size={52}
+              color="var(--mantine-color-red-6)"
+              stroke={1.5}
+            />
+          </Dropzone.Reject>
+          <Dropzone.Accept>
+            <IconUpload
+              size={52}
+              color="var(--mantine-color-blue-6)"
+              stroke={1.5}
+            />
+          </Dropzone.Accept>
+
+          {value !== null ? (
+            <>
+              {Array.isArray(value) ? (
+                <>
+                  {value.length !== 0 ? (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={itemIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {value.map((item, index) => (
+                          <SortableItem
+                            key={getItemId(item, index)}
+                            id={getItemId(item, index)}
+                            item={item}
+                            onRemove={() => removeFile(index)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  ) : (
+                    <PlaceHolder disabled={disabled} mimeType={mimeType} />
+                  )}
+                </>
+              ) : (
+                <div>
+                  {isFile(value) ? (
+                    <FileView file={value} onRemove={() => removeFile()} />
+                  ) : (
+                    <ImageView value={value} onRemove={() => removeFile()} />
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <PlaceHolder disabled={disabled} mimeType={mimeType} />
+            </>
+          )}
+        </Group>
+      </Dropzone>
+      <span className={styles.error}>{error}</span>
+    </div>
+  );
+}
